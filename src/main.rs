@@ -117,6 +117,27 @@ enum Cmd {
         #[arg(long)]
         merge: Option<PathBuf>,
     },
+    /// Add a NEW movie asset under its own name (does not override an existing one).
+    /// Loadable in-game via SetSwfFile("<name>.gfx").
+    New {
+        #[arg(long)]
+        wad: PathBuf,
+        /// New asset name, e.g. "customui".
+        #[arg(long)]
+        name: String,
+        /// The movie file to add.
+        #[arg(long)]
+        movie: PathBuf,
+        /// Output patch WAD.
+        #[arg(long)]
+        out: PathBuf,
+        /// Existing movie to copy the container/type layout from.
+        #[arg(long, default_value = "minimap")]
+        template: String,
+        /// Merge into this existing vz-patch.wad instead of a fresh one.
+        #[arg(long)]
+        merge: Option<PathBuf>,
+    },
 }
 
 /// Locate a movie by name: (block_index, name_hash, type_hash, field_c, secondary_ref,
@@ -274,6 +295,52 @@ fn build(wad: &PathBuf, name: &str, movie: &PathBuf, out: &PathBuf, merge: Optio
     Ok(())
 }
 
+fn new_asset(wad: &PathBuf, name: &str, movie: &PathBuf, out: &PathBuf, merge: Option<&PathBuf>, template: &str) -> Result<(), String> {
+    let mut file = File::open(wad).map_err(|e| format!("open {}: {e}", wad.display()))?;
+    let file_size = file.metadata().map_err(|e| format!("metadata: {e}"))?.len();
+    let archive = load_ffcs_archive(&mut file, file_size).map_err(|e| format!("FFCS: {e}"))?;
+    // borrow container-header shape + type_hash/field_c from an existing movie
+    let tmpl = locate_movie(&mut file, &archive, template)?;
+    let new_movie = std::fs::read(movie).map_err(|e| format!("read {}: {e}", movie.display()))?;
+    if find_movie(&new_movie).is_none() {
+        eprintln!("warning: {} has no GFX/CFX/FWS/CWS header", movie.display());
+    }
+
+    let container = rebuild_container(&tmpl.container, &new_movie)?;
+    let name_hash = pandemic_hash_m2(name); // NEW hash — not an existing asset
+    let mut block = Vec::with_capacity(4 + 16 + container.len());
+    block.extend_from_slice(&1u32.to_le_bytes());
+    block.extend_from_slice(&name_hash.to_le_bytes());
+    block.extend_from_slice(&tmpl.type_hash.to_le_bytes());
+    block.extend_from_slice(&tmpl.field_c.to_le_bytes());
+    block.extend_from_slice(&(container.len() as u32).to_le_bytes());
+    block.extend_from_slice(&container);
+
+    let compressed = compress_sges(&block).map_err(|e| format!("sges: {e}"))?;
+    let decomp_pages = ((block.len() + PAGE - 1) / PAGE) as u32;
+    let aset = vec![AsetEntry::new(name_hash, 0xFFFF_FFFF, 0x0000_FFFF, MOVIE_TYPE_ID)];
+    let mut pb = PatchBlock::new(compressed, format!("blocks\\VZ\\custom_{name_hash:08x}.block"), aset);
+    pb.packed_field = decomp_pages;
+
+    let csum_value = find_chunk(&archive.chunks, b"CSUM").map(|r| r.offset).unwrap_or(0);
+    let csum_meta = find_chunk(&archive.chunks, b"CSUM").map(|r| r.meta);
+    let wad_bytes = if let Some(existing) = merge {
+        let ex = std::fs::read(existing).map_err(|e| format!("read merge {}: {e}", existing.display()))?;
+        merge_patch_wads(&ex, vec![pb], true)?
+    } else {
+        build_patch_wad_multi(&[pb], csum_value, csum_meta, &FFCS_CERT_BLOB)
+    };
+    if let Some(parent) = out.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("mkdir: {e}"))?;
+    }
+    std::fs::write(out, &wad_bytes).map_err(|e| format!("write {}: {e}", out.display()))?;
+    println!(
+        "NEW asset '{name}' (0x{name_hash:08X}, type_id={MOVIE_TYPE_ID}, template '{template}') with {} movie bytes -> {} ({} bytes)\n  load in-game via SetSwfFile(\"{name}.gfx\")",
+        new_movie.len(), out.display(), wad_bytes.len()
+    );
+    Ok(())
+}
+
 fn find_assets(wad: &PathBuf, names: &[String]) -> Result<(), String> {
     let mut file = File::open(wad).map_err(|e| format!("open {}: {e}", wad.display()))?;
     let file_size = file.metadata().map_err(|e| format!("metadata: {e}"))?.len();
@@ -412,6 +479,7 @@ fn main() -> std::process::ExitCode {
         Cmd::Find { wad, names } => find_assets(wad, names),
         Cmd::Extract { wad, name, out } => extract(wad, name, out),
         Cmd::Build { wad, name, movie, out, merge } => build(wad, name, movie, out, merge.as_ref()),
+        Cmd::New { wad, name, movie, out, template, merge } => new_asset(wad, name, movie, out, merge.as_ref(), template),
     };
     match r {
         Ok(()) => std::process::ExitCode::SUCCESS,

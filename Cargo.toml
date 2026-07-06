@@ -1,0 +1,13 @@
+[package]
+name = "gfx_tool"
+version = "0.1.0"
+edition = "2021"
+description = "Extract and re-inject Scaleform .gfx/.swf movies in Mercenaries 2 vz.wad (build vz-patch.wad overrides)"
+
+[dependencies]
+mercs2_formats = { path = "../mercs2-wad-simulator/crates/mercs2_formats" }
+clap = { version = "4", features = ["derive"] }
+
+[[bin]]
+name = "gfx_tool"
+path = "src/main.rs"

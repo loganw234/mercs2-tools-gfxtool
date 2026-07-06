@@ -2,8 +2,10 @@
 
 Extract and re-inject **Scaleform `.gfx` / Adobe SWF** movies in *Mercenaries 2:
 World in Flames* (PC), producing a `vz-patch.wad` overlay the game/`wad_simulator`
-accepts. Companion to [`mercs2-wad-simulator`](../mercs2-wad-simulator) — depends on
-its `mercs2_formats` crate for the WAD/UCFX/SGES plumbing.
+accepts. Depends — as a **git dependency, used with permission** — on the
+[Mercenaries-Fan-Build **`mercs2-wad-simulator`**](https://github.com/Mercenaries-Fan-Build/mercs2-wad-simulator)
+`mercs2_formats` crate for the WAD/UCFX/SGES plumbing (fetched at build time, not
+redistributed here — see NOTICE).
 
 ## Build
 
@@ -53,16 +55,28 @@ wad_simulator --wad vz-patch.wad --rainbow-table rainbow_table.json
 - Override is by ASET hash (last-opened-wins), so a single-asset patch block replaces just
   that movie; sibling assets in the same base block resolve normally.
 
-## The remaining piece: authoring
+## Authoring movies
 
 This tool handles the WAD/container plumbing end-to-end (proven: extract → rebuild →
 `cfx_pack`-validated → byte-identical re-extract, for both same-size and size-changing
-injects). It does **not** author movie content. To make a real change you still need to
-produce a valid movie file:
+injects). To *author* the movie content, pair it with
+**[gfxforge](https://github.com/loganw234/mercs2-tools-gfxforge)** — a pure-Python library
+that emits ready-to-inject `.gfx` movies (vector shapes, text via the game's shared font,
+buttons/menus, and compiled AVM1 behaviour). Typical flow:
 
-- The extracted file is a **Scaleform GFX** (`CFX`, zlib GFX v8), not a plain SWF — JPEXS
-  opens SWF, not GFX, so editing the GFX directly needs Scaleform 2.x tooling.
-- **Open question, now trivially testable with this tool:** the engine's magic table also
-  recognizes raw **`FWS`/`CWS` (Adobe SWF)**. Author a Flash-8/AS2 SWF, `build --movie
-  test.swf`, launch, and check `loadprobe` — if it renders, you can skip the proprietary
-  `gfxexport` and author with open tooling (JPEXS/MTASC/swftools).
+```bash
+python -m gfxforge.gui                 # or a generator script -> hud.gfx
+gfx_tool new --wad vz.wad --name hud --movie hud.gfx --out vz-patch.wad
+```
+
+Pure vector + text + scripting is fully covered by gfxforge; only image-heavy movies still
+need Scaleform's `gfxexport`. (The engine also accepts raw `FWS`/`CWS` Adobe SWF, but the
+render bug that path was meant to sidestep turned out to be a single wrong `PlaceObject2`
+flag — fixed in gfxforge, so raw GFX authoring works directly.)
+
+## License & credits
+
+MIT — see `LICENSE`. The underlying WAD/UCFX/SGES/ASET format work and the `mercs2_formats`
+crate are from the Mercenaries-Fan-Build
+[`mercs2-wad-simulator`](https://github.com/Mercenaries-Fan-Build/mercs2-wad-simulator),
+used here as a git dependency with permission — see `NOTICE`.

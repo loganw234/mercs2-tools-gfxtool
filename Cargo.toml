@@ -3,9 +3,16 @@ name = "gfx_tool"
 version = "0.1.0"
 edition = "2021"
 description = "Extract and re-inject Scaleform .gfx/.swf movies in Mercenaries 2 vz.wad (build vz-patch.wad overrides)"
+license = "MIT"
+repository = "https://github.com/loganw234/mercs2-tools-gfxtool"
 
 [dependencies]
-mercs2_formats = { path = "../mercs2-wad-simulator/crates/mercs2_formats" }
+# mercs2_formats is the Mercenaries-Fan-Build WAD/format crate. Referenced as a
+# git dependency (used with permission) so their code is fetched at build time,
+# never redistributed here. Pinned for reproducible builds; bump `rev` to update.
+# For local co-development against a checkout, comment this and use the path line.
+mercs2_formats = { git = "https://github.com/Mercenaries-Fan-Build/mercs2-wad-simulator.git", rev = "b6df81851b0a6c5c72b7322bf185d640478c21ad" }
+# mercs2_formats = { path = "../mercs2-wad-simulator/crates/mercs2_formats" }
 clap = { version = "4", features = ["derive"] }
 
 [[bin]]

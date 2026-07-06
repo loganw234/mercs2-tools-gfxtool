@@ -152,6 +152,7 @@ checksum = "a6cb138bb79a146c1bd460005623e142ef0181e3d0219cb493e02f7d08a35695"
 [[package]]
 name = "mercs2_formats"
 version = "0.1.0"
+source = "git+https://github.com/Mercenaries-Fan-Build/mercs2-wad-simulator.git?rev=b6df81851b0a6c5c72b7322bf185d640478c21ad#b6df81851b0a6c5c72b7322bf185d640478c21ad"
 dependencies = [
  "flate2",
 ]

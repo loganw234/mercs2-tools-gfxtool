@@ -80,3 +80,15 @@ MIT — see `LICENSE`. The underlying WAD/UCFX/SGES/ASET format work and the `me
 crate are from the Mercenaries-Fan-Build
 [`mercs2-wad-simulator`](https://github.com/Mercenaries-Fan-Build/mercs2-wad-simulator),
 used here as a git dependency with permission — see `NOTICE`.
+
+## Disclaimer
+
+This is an unofficial, non-commercial community fan project. It is **not affiliated with, associated with,
+authorized by, endorsed by, or in any way officially connected to Electronic Arts or Pandemic Studios**.
+*Mercenaries 2: World in Flames* and all related marks are the property of their respective owners.
+
+This repository contains original code only -- no game assets are redistributed. It requires your own
+legally-obtained copy of the game to be of any use.
+
+If a rights holder objects to anything in this repository, contact me and I will comply with a removal
+request.
